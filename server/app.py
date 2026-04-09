@@ -1,53 +1,76 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-import uvicorn
+import requests
+import os
 
-app = FastAPI()
+BASE_URL = "http://127.0.0.1:7860"
 
-env_state = {
-    "reward": 0.0,
-    "step": 0,
-    "id": 1,
-    "issue": "wrong item received",
-    "priority": "medium",
-    "sentiment": "neutral",
-    "correct_action": "replace"
-}
+print("[START]")
 
-class StepRequest(BaseModel):
-    action: str
-    reasoning: str
+# Reset environment
+try:
+    requests.post(f"{BASE_URL}/reset", timeout=10)
+    print("[RESET] Done")
+except Exception as e:
+    print(f"[RESET ERROR] {e}")
 
-@app.get("/")
-def home():
-    return {"message": "API working"}
+done = False
+step_count = 0
 
-@app.post("/reset")
-def reset():
-    global env_state
-    env_state["reward"] = 0.0
-    env_state["step"] = 0
-    return {"message": "Environment reset successful", "state": env_state}
+while not done and step_count < 5:
+    try:
+        state = requests.get(f"{BASE_URL}/state", timeout=10).json()
 
-@app.post("/step")
-def step(request: StepRequest):
-    global env_state
-    env_state["step"] += 1
-    reward = 0.5
-    env_state["reward"] = reward
-    done = env_state["step"] >= 5
-    return {
-        "reward": reward,
-        "observation": f"Step {env_state['step']} done. Action: {request.action}",
-        "done": done
-    }
+        # LLM call
+        api_base = os.environ.get("API_BASE_URL", "")
+        api_key = os.environ.get("API_KEY", "dummy")
 
-@app.get("/state")
-def state():
-    return env_state
+        action = "replace"  # default fallback
 
-def main():
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+        if api_base:
+            try:
+                llm_resp = requests.post(
+                    f"{api_base}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": "gpt-4o-mini",
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": "You are a customer support AI. Choose one action: replace, refund, escalate, or apologize. Reply with just one word."
+                            },
+                            {
+                                "role": "user",
+                                "content": f"Issue: {state.get('issue', 'unknown')}. Priority: {state.get('priority', 'medium')}. Sentiment: {state.get('sentiment', 'neutral')}. What action?"
+                            }
+                        ],
+                        "max_tokens": 10
+                    },
+                    timeout=30
+                ).json()
 
-if __name__ == "__main__":
-    main()
+                action = llm_resp["choices"][0]["message"]["content"].strip().lower()
+                print(f"[LLM] Action: {action}")
+
+            except Exception as e:
+                print(f"[LLM ERROR] {e}")
+                action = "replace"
+
+        # Step in environment
+        step_response = requests.post(
+            f"{BASE_URL}/step",
+            json={"action": action, "reasoning": f"LLM decided to {action}"},
+            timeout=10
+        ).json()
+
+        reward = step_response["reward"]
+        done = step_response["done"]
+        step_count += 1
+        print(f"[STEP {step_count}] Action: {action}, Reward: {reward}, Done: {done}")
+
+    except Exception as e:
+        print(f"[ERROR] {e}")
+        break
+
+print("[END]")
