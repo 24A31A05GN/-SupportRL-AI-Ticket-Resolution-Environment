@@ -1,6 +1,6 @@
-# app.py
 from fastapi import FastAPI
 from pydantic import BaseModel
+import uvicorn
 
 app = FastAPI()
 
@@ -26,7 +26,7 @@ def home():
     return {"message": "API working"}
 
 # ---- Reset ----
-@app.get("/reset")
+@app.post("/reset")
 def reset():
     global env_state
     env_state["reward"] = 0.0
@@ -40,18 +40,10 @@ def reset():
 @app.post("/step")
 def step(request: StepRequest):
     global env_state
-
     env_state["step"] += 1
-
-    # ✅ Reward logic (0.0 to 1.0)
     reward = 0.5
     env_state["reward"] = reward
-
-    # ✅ IMPORTANT: Done becomes True after 5 steps
-    done = False
-    if env_state["step"] >= 5:
-        done = True
-
+    done = env_state["step"] >= 5
     return {
         "reward": reward,
         "observation": f"Step {env_state['step']} done. Action: {request.action}",
@@ -63,24 +55,9 @@ def step(request: StepRequest):
 def state():
     return env_state
 
-# ---- Auto-run ----
-@app.get("/auto-run")
-def auto_run():
-    global env_state
+# ---- Main ----
+def main():
+    uvicorn.run(app, host="0.0.0.0", port=7860)
 
-    logs = []
-
-    # simulate 5 steps
-    for i in range(5):
-        env_state["step"] += 1
-        env_state["reward"] = 0.5
-
-        logs.append({
-            "step": env_state["step"],
-            "reward": env_state["reward"]
-        })
-
-    return {
-        "logs": logs,
-        "final_state": env_state
-    }
+if __name__ == "__main__":
+    main()
