@@ -36,8 +36,7 @@ while not done and step_count < 5:
                         "messages": [
                             {
                                 "role": "system",
-                                "content": "You are a customer support AI. Choose one action: replace, refund, escalate, or apologize. Reply with just one word."
-                            },
+                                "content": "You are a customer support AI. Choose one action: respond, investigate, or escalate. Reply with just one word only."
                             {
                                 "role": "user",
                                 "content": f"Issue: {state.get('issue', 'unknown')}. Priority: {state.get('priority', 'medium')}. Sentiment: {state.get('sentiment', 'neutral')}. What action?"
