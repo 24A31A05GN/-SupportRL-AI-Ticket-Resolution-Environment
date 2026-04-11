@@ -5,7 +5,6 @@ BASE_URL = "http://127.0.0.1:7860"
 
 print("[START]")
 
-# Reset environment
 try:
     requests.post(f"{BASE_URL}/reset", timeout=10)
     print("[RESET] Done")
@@ -19,11 +18,10 @@ while not done and step_count < 5:
     try:
         state = requests.get(f"{BASE_URL}/state", timeout=10).json()
 
-        # LLM call
         api_base = os.environ.get("API_BASE_URL", "")
         api_key = os.environ.get("API_KEY", "dummy")
 
-        action = "replace"  # default fallback
+        action = "replace"
 
         if api_base:
             try:
@@ -57,7 +55,6 @@ while not done and step_count < 5:
                 print(f"[LLM ERROR] {e}")
                 action = "replace"
 
-        # Step in environment
         step_response = requests.post(
             f"{BASE_URL}/step",
             json={"action": action, "reasoning": f"LLM decided to {action}"},
