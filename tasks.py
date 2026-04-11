@@ -1,3 +1,5 @@
+from grader import grade
+
 tasks = [
     {
         "id": 1,
@@ -5,7 +7,7 @@ tasks = [
         "priority": "medium",
         "sentiment": "neutral",
         "correct_action": "replace",
-        "grader": "grader.grade"
+        "grader": grade
     },
     {
         "id": 2,
@@ -13,7 +15,7 @@ tasks = [
         "priority": "high",
         "sentiment": "angry",
         "correct_action": "refund",
-        "grader": "grader.grade"
+        "grader": grade
     },
     {
         "id": 3,
@@ -21,6 +23,6 @@ tasks = [
         "priority": "low",
         "sentiment": "neutral",
         "correct_action": "apologize",
-        "grader": "grader.grade"
+        "grader": grade
     }
 ]
