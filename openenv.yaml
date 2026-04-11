@@ -1,2 +1,3 @@
 grader: grader.grade
 tasks: tasks.tasks
+min_tasks: 3
