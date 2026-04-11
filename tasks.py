@@ -1,28 +1,26 @@
 tasks = [
-    # 🟢 EASY
     {
         "id": 1,
         "issue": "wrong item received",
         "priority": "medium",
         "sentiment": "neutral",
-        "correct_action": "replace"
+        "correct_action": "replace",
+        "grader": "grader.grade"
     },
-
-    # 🟡 MEDIUM
     {
         "id": 2,
-        "issue": "late delivery but received",
-        "priority": "low",
-        "sentiment": "angry",
-        "correct_action": "apology"
-    },
-
-    # 🔴 HARD
-    {
-        "id": 3,
-        "issue": "refund requested after 10 days (policy violation)",
+        "issue": "payment failed",
         "priority": "high",
         "sentiment": "angry",
-        "correct_action": "escalate"
+        "correct_action": "refund",
+        "grader": "grader.grade"
+    },
+    {
+        "id": 3,
+        "issue": "delivery delayed",
+        "priority": "low",
+        "sentiment": "neutral",
+        "correct_action": "apologize",
+        "grader": "grader.grade"
     }
 ]
