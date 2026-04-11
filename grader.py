@@ -6,14 +6,14 @@ def grade(task, action):
     if action.lower().strip() == correct.lower().strip():
         # bonus reward for high priority correct action
         if priority == "high":
-            return 0.9
+            return 0.92
         elif priority == "medium":
-            return 0.7
+            return 0.75
         else:
-            return 0.6
+            return 0.65
     else:
         # penalty based on sentiment
         if sentiment == "angry":
-            return 0.1
+            return 0.15
         else:
-            return 0.3
+            return 0.35
