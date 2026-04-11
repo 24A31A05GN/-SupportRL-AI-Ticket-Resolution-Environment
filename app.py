@@ -4,58 +4,73 @@ import uvicorn
 
 app = FastAPI()
 
-# ---- Global environment state ----
+tasks = [
+    {"id": 1, "issue": "wrong item received", "priority": "medium", "sentiment": "neutral", "correct_action": "replace"},
+    {"id": 2, "issue": "payment failed", "priority": "high", "sentiment": "angry", "correct_action": "refund"},
+    {"id": 3, "issue": "delivery delayed", "priority": "low", "sentiment": "neutral", "correct_action": "apologize"},
+]
+
 env_state = {
     "reward": 0.0,
     "step": 0,
-    "id": 1,
-    "issue": "wrong item received",
-    "priority": "medium",
-    "sentiment": "neutral",
-    "correct_action": "replace"
+    "task_index": 0,
+    **tasks[0]
 }
 
-# ---- Request model ----
 class StepRequest(BaseModel):
     action: str
     reasoning: str
 
-# ---- Home ----
 @app.get("/")
 def home():
     return {"message": "API working"}
 
-# ---- Reset ----
 @app.post("/reset")
 def reset():
     global env_state
-    env_state["reward"] = 0.0
-    env_state["step"] = 0
-    return {
-        "message": "Environment reset successful",
-        "state": env_state
+    env_state = {
+        "reward": 0.0,
+        "step": 0,
+        "task_index": 0,
+        **tasks[0]
     }
+    return {"message": "Environment reset successful", "state": env_state}
 
-# ---- Step ----
 @app.post("/step")
 def step(request: StepRequest):
     global env_state
-    env_state["step"] += 1
-    reward = 0.5
+
+    correct = tasks[env_state["task_index"]]["correct_action"]
+
+    if request.action.lower() == correct:
+        reward = 0.8
+    else:
+        reward = 0.2
+
     env_state["reward"] = reward
-    done = env_state["step"] >= 5
+    env_state["step"] += 1
+
+    task_index = env_state["task_index"] + 1
+    done = task_index >= len(tasks)
+
+    if not done:
+        env_state["task_index"] = task_index
+        env_state.update(tasks[task_index])
+
     return {
         "reward": reward,
         "observation": f"Step {env_state['step']} done. Action: {request.action}",
         "done": done
     }
 
-# ---- State ----
 @app.get("/state")
 def state():
     return env_state
 
-# ---- Main ----
+@app.get("/tasks")
+def get_tasks():
+    return {"tasks": tasks}
+
 def main():
     uvicorn.run(app, host="0.0.0.0", port=7860)
 
