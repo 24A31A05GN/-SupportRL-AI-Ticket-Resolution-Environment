@@ -14,14 +14,14 @@ except Exception as e:
 done = False
 step_count = 0
 
-while not done and step_count < 5:
+while not done and step_count < 10:
     try:
         state = requests.get(f"{BASE_URL}/state", timeout=10).json()
 
         api_base = os.environ.get("API_BASE_URL", "")
         api_key = os.environ.get("API_KEY", "dummy")
 
-        action = "replace"
+        action = "respond"  # default fallback
 
         if api_base:
             try:
@@ -36,10 +36,30 @@ while not done and step_count < 5:
                         "messages": [
                             {
                                 "role": "system",
-                                "content": "You are a customer support AI. Choose one action: respond, investigate, or escalate. Reply with just one word only."
+                                "content": """You are an expert customer support AI agent.
+Your job is to analyze support tickets and choose the best action.
+
+Available actions:
+- respond: for simple, low priority issues that need a quick reply
+- investigate: for medium priority issues that need more analysis
+- escalate: for high priority or angry customer issues needing manager attention
+
+Rules:
+- If priority is HIGH → escalate
+- If sentiment is ANGRY → escalate
+- If priority is MEDIUM → investigate
+- If priority is LOW → respond
+
+Reply with ONLY one word: respond, investigate, or escalate."""
+                            },
                             {
                                 "role": "user",
-                                "content": f"Issue: {state.get('issue', 'unknown')}. Priority: {state.get('priority', 'medium')}. Sentiment: {state.get('sentiment', 'neutral')}. What action?"
+                                "content": f"""Ticket details:
+Issue: {state.get('issue', 'unknown')}
+Priority: {state.get('priority', 'medium')}
+Sentiment: {state.get('sentiment', 'neutral')}
+
+What is the best action?"""
                             }
                         ],
                         "max_tokens": 10
@@ -48,11 +68,14 @@ while not done and step_count < 5:
                 ).json()
 
                 action = llm_resp["choices"][0]["message"]["content"].strip().lower()
+                # clean action to only valid words
+                if action not in ["respond", "investigate", "escalate"]:
+                    action = "respond"
                 print(f"[LLM] Action: {action}")
 
             except Exception as e:
                 print(f"[LLM ERROR] {e}")
-                action = "replace"
+                action = "respond"
 
         step_response = requests.post(
             f"{BASE_URL}/step",
