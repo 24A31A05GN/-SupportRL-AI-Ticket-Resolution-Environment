@@ -6,7 +6,7 @@ def grade(task, action):
     if action.lower().strip() == correct.lower().strip():
         # bonus reward for high priority correct action
         if priority == "high":
-            return 0.92
+            return 0.9   # ← was 0.92, must be strictly < 1
         elif priority == "medium":
             return 0.75
         else:
