@@ -3,40 +3,70 @@ import os
 
 BASE_URL = "http://127.0.0.1:7860"
 
-print("[START]")
+# Tasks matching SupportRL environment
+TASKS = ["wrong_item", "payment_failed", "delivery_delayed"]
 
-try:
-    requests.post(f"{BASE_URL}/reset", timeout=10)
-    print("[RESET] Done")
-except Exception as e:
-    print(f"[RESET ERROR] {e}")
+def clamp_score(score):
+    """Ensures score stays strictly within (0, 1)"""
+    return max(0.01, min(0.99, score))
 
-done = False
-step_count = 0
+def grade(task, action):
+    correct = task.get("correct_action", "")
+    priority = task.get("priority", "medium")
+    sentiment = task.get("sentiment", "neutral")
 
-while not done and step_count < 10:
+    if action.lower().strip() == correct.lower().strip():
+        if priority == "high":
+            raw = 0.9
+        elif priority == "medium":
+            raw = 0.75
+        else:
+            raw = 0.65
+    else:
+        if sentiment == "angry":
+            raw = 0.15
+        else:
+            raw = 0.35
+
+    return clamp_score(raw)
+
+def run_task(task_name):
+    print(f"[TASK] Starting: {task_name}")
+
     try:
-        state = requests.get(f"{BASE_URL}/state", timeout=10).json()
+        requests.post(f"{BASE_URL}/reset", timeout=10)
+        print(f"[RESET] Done for task: {task_name}")
+    except Exception as e:
+        print(f"[RESET ERROR] {e}")
+        print("[END]")
+        return
 
-        api_base = os.environ.get("API_BASE_URL", "")
-        api_key = os.environ.get("API_KEY", "dummy")
+    done = False
+    step_count = 0
 
-        action = "respond"  # default fallback
+    while not done and step_count < 10:
+        try:
+            state = requests.get(f"{BASE_URL}/state", timeout=10).json()
 
-        if api_base:
-            try:
-                llm_resp = requests.post(
-                    f"{api_base}/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "model": "gpt-4o-mini",
-                        "messages": [
-                            {
-                                "role": "system",
-                                "content": """You are an expert customer support AI agent.
+            api_base = os.environ.get("API_BASE_URL", "")
+            api_key = os.environ.get("API_KEY", "dummy")
+
+            action = "respond"  # default fallback
+
+            if api_base:
+                try:
+                    llm_resp = requests.post(
+                        f"{api_base}/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {api_key}",
+                            "Content-Type": "application/json"
+                        },
+                        json={
+                            "model": "gpt-4o-mini",
+                            "messages": [
+                                {
+                                    "role": "system",
+                                    "content": """You are an expert customer support AI agent.
 Your job is to analyze support tickets and choose the best action.
 
 Available actions:
@@ -51,45 +81,64 @@ Rules:
 - If priority is LOW → respond
 
 Reply with ONLY one word: respond, investigate, or escalate."""
-                            },
-                            {
-                                "role": "user",
-                                "content": f"""Ticket details:
+                                },
+                                {
+                                    "role": "user",
+                                    "content": f"""Ticket details:
 Issue: {state.get('issue', 'unknown')}
 Priority: {state.get('priority', 'medium')}
 Sentiment: {state.get('sentiment', 'neutral')}
 
 What is the best action?"""
-                            }
-                        ],
-                        "max_tokens": 10
-                    },
-                    timeout=30
-                ).json()
+                                }
+                            ],
+                            "max_tokens": 10
+                        },
+                        timeout=30
+                    ).json()
 
-                action = llm_resp["choices"][0]["message"]["content"].strip().lower()
-                # clean action to only valid words
-                if action not in ["respond", "investigate", "escalate"]:
+                    action = llm_resp["choices"][0]["message"]["content"].strip().lower()
+                    if action not in ["respond", "investigate", "escalate"]:
+                        action = "respond"
+                    print(f"[LLM] Action: {action}")
+
+                except Exception as e:
+                    print(f"[LLM ERROR] {e}")
                     action = "respond"
-                print(f"[LLM] Action: {action}")
 
-            except Exception as e:
-                print(f"[LLM ERROR] {e}")
-                action = "respond"
+            # Grade using clamped grader
+            score = grade(state, action)
+            print(f"[GRADE] Task: {task_name}, Score: {score}")
 
-        step_response = requests.post(
-            f"{BASE_URL}/step",
-            json={"action": action, "reasoning": f"LLM decided to {action}"},
-            timeout=10
-        ).json()
+            step_response = requests.post(
+                f"{BASE_URL}/step",
+                json={"action": action, "reasoning": f"LLM decided to {action}"},
+                timeout=10
+            ).json()
 
-        reward = step_response["reward"]
-        done = step_response["done"]
-        step_count += 1
-        print(f"[STEP {step_count}] Action: {action}, Reward: {reward}, Done: {done}")
+            reward = step_response.get("reward", 0.5)
+            done = step_response.get("done", False)
+            step_count += 1
+            print(f"[STEP {step_count}] Task: {task_name}, Action: {action}, Reward: {reward}, Done: {done}")
 
+        except Exception as e:
+            print(f"[ERROR] {e}")
+            break
+
+    print("[END]")
+
+
+def main():
+    print("[START]")
+    try:
+        for task_name in TASKS:
+            run_task(task_name)
     except Exception as e:
-        print(f"[ERROR] {e}")
-        break
+        print(f"[FATAL ERROR] {e}")
+        # Emit one [END] per task on fatal failure
+        for _ in TASKS:
+            print("[END]")
 
-print("[END]")
+
+if __name__ == "__main__":
+    main()
