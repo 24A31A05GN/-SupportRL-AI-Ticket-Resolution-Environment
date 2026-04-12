@@ -1,5 +1,3 @@
-from grader import grade
-
 tasks = [
     {
         "id": 1,
@@ -7,7 +5,7 @@ tasks = [
         "priority": "medium",
         "sentiment": "neutral",
         "correct_action": "respond",
-        "grader": grade
+        "grader": "grader.grade"
     },
     {
         "id": 2,
@@ -15,7 +13,7 @@ tasks = [
         "priority": "high",
         "sentiment": "angry",
         "correct_action": "escalate",
-        "grader": grade
+        "grader": "grader.grade"
     },
     {
         "id": 3,
@@ -23,7 +21,7 @@ tasks = [
         "priority": "low",
         "sentiment": "neutral",
         "correct_action": "investigate",
-        "grader": grade
+        "grader": "grader.grade"
     },
     {
         "id": 4,
@@ -31,7 +29,7 @@ tasks = [
         "priority": "high",
         "sentiment": "angry",
         "correct_action": "escalate",
-        "grader": grade
+        "grader": "grader.grade"
     },
     {
         "id": 5,
@@ -39,7 +37,7 @@ tasks = [
         "priority": "medium",
         "sentiment": "angry",
         "correct_action": "investigate",
-        "grader": grade
+        "grader": "grader.grade"
     },
     {
         "id": 6,
@@ -47,6 +45,6 @@ tasks = [
         "priority": "low",
         "sentiment": "neutral",
         "correct_action": "respond",
-        "grader": grade
+        "grader": "grader.grade"
     }
 ]
